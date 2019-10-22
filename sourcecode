@@ -1,0 +1,79 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPG_DEMO_008
+*&
+*&---------------------------------------------------------------------*
+*&Copy&Right Code4fun.vn
+*&
+*&---------------------------------------------------------------------*
+REPORT ZPG_DEMO_008.
+
+DATA: LT_BKPF  TYPE STANDARD TABLE OF BKPF,
+      LS_BKPF  TYPE BKPF,
+      LT_BSEG  TYPE STANDARD TABLE OF BSEG,
+      LS_BSEG  TYPE BSEG,
+      LW_INDEX TYPE I,
+      LW_START TYPE I,
+      LW_END   TYPE I,
+      LW_TIME  TYPE I.
+" Get Date Sample
+SELECT * FROM BKPF INTO TABLE LT_BKPF UP TO 1000 ROWS.
+CHECK LT_BKPF[] IS NOT INITIAL.
+SELECT * FROM BSEG INTO TABLE LT_BSEG
+  FOR ALL ENTRIES IN LT_BKPF
+   WHERE BUKRS = LT_BKPF-BUKRS
+      AND BELNR = LT_BKPF-BELNR
+      AND GJAHR = LT_BKPF-GJAHR.
+" Performance
+GET RUN TIME FIELD LW_START.
+LOOP AT LT_BKPF INTO LS_BKPF.
+  LOOP AT LT_BSEG INTO LS_BSEG.
+    IF LS_BSEG-BUKRS = LS_BKPF-BUKRS
+      AND LS_BSEG-BELNR = LS_BKPF-BELNR
+      AND LS_BSEG-GJAHR = LS_BKPF-GJAHR.
+*   Code Process Logic Details...
+    ENDIF.
+  ENDLOOP.
+ENDLOOP.
+GET RUN TIME FIELD LW_END.
+LW_TIME = LW_END - LW_START.
+WRITE: / 'Loop nested loop: ', LW_TIME.
+
+GET RUN TIME FIELD LW_START.
+LOOP AT LT_BKPF INTO LS_BKPF.
+  LOOP AT LT_BSEG INTO LS_BSEG
+    WHERE BUKRS = LS_BKPF-BUKRS
+      AND BELNR = LS_BKPF-BELNR
+      AND GJAHR = LS_BKPF-GJAHR.
+*   Code Process Logic Details...
+  ENDLOOP.
+ENDLOOP.
+GET RUN TIME FIELD LW_END.
+LW_TIME = LW_END - LW_START.
+WRITE: / 'Loop nested loop where: ', LW_TIME.
+
+
+SORT LT_BKPF BY BUKRS GJAHR BELNR.
+SORT LT_BSEG BY BUKRS GJAHR BELNR.
+GET RUN TIME FIELD LW_START.
+LOOP AT LT_BKPF INTO LS_BKPF.
+  CLEAR: LW_INDEX.
+  READ TABLE LT_BSEG TRANSPORTING NO FIELDS
+  WITH KEY BUKRS = LS_BKPF-BUKRS
+           BELNR = LS_BKPF-BELNR
+           GJAHR = LS_BKPF-GJAHR.
+  CHECK SY-SUBRC IS INITIAL.
+  LW_INDEX = SY-TABIX.
+  LOOP AT LT_BSEG INTO LS_BSEG FROM LW_INDEX.
+    IF NOT ( LS_BSEG-BUKRS = LS_BKPF-BUKRS
+         AND LS_BSEG-BELNR = LS_BKPF-BELNR
+         AND LS_BSEG-GJAHR = LS_BKPF-GJAHR ).
+*   Code Process Logic Details...
+      EXIT.
+    ENDIF.
+    ADD 1 TO LW_INDEX.
+*   Code Process Logic Details...
+  ENDLOOP.
+ENDLOOP.
+GET RUN TIME FIELD LW_END.
+LW_TIME = LW_END - LW_START.
+WRITE: / 'Loop nested loop parallel cursor: ', LW_TIME.
