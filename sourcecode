@@ -2,7 +2,7 @@
 *& Report  ZPG_DEMO_008
 *&
 *&---------------------------------------------------------------------*
-*&Copy&Right Code4fun.vn
+*&
 *&
 *&---------------------------------------------------------------------*
 REPORT ZPG_DEMO_008.
@@ -24,6 +24,9 @@ SELECT * FROM BSEG INTO TABLE LT_BSEG
       AND BELNR = LT_BKPF-BELNR
       AND GJAHR = LT_BKPF-GJAHR.
 " Performance
+*--------------------------------------------------------------------*
+*& Loop nested loop
+*--------------------------------------------------------------------*
 GET RUN TIME FIELD LW_START.
 LOOP AT LT_BKPF INTO LS_BKPF.
   LOOP AT LT_BSEG INTO LS_BSEG.
@@ -38,6 +41,9 @@ GET RUN TIME FIELD LW_END.
 LW_TIME = LW_END - LW_START.
 WRITE: / 'Loop nested loop: ', LW_TIME.
 
+*--------------------------------------------------------------------*
+*& Loop where
+*--------------------------------------------------------------------*
 GET RUN TIME FIELD LW_START.
 LOOP AT LT_BKPF INTO LS_BKPF.
   LOOP AT LT_BSEG INTO LS_BSEG
@@ -51,13 +57,15 @@ GET RUN TIME FIELD LW_END.
 LW_TIME = LW_END - LW_START.
 WRITE: / 'Loop nested loop where: ', LW_TIME.
 
-
+*--------------------------------------------------------------------*
+*& Loop pararell cursor with read
+*--------------------------------------------------------------------*
 SORT LT_BKPF BY BUKRS GJAHR BELNR.
 SORT LT_BSEG BY BUKRS GJAHR BELNR.
 GET RUN TIME FIELD LW_START.
 LOOP AT LT_BKPF INTO LS_BKPF.
   CLEAR: LW_INDEX.
-  READ TABLE LT_BSEG TRANSPORTING NO FIELDS
+  READ TABLE LT_BSEG TRANSPORTING NO FIELDS BINARY SEARCH
   WITH KEY BUKRS = LS_BKPF-BUKRS
            BELNR = LS_BKPF-BELNR
            GJAHR = LS_BKPF-GJAHR.
@@ -77,3 +85,25 @@ ENDLOOP.
 GET RUN TIME FIELD LW_END.
 LW_TIME = LW_END - LW_START.
 WRITE: / 'Loop nested loop parallel cursor: ', LW_TIME.
+
+*--------------------------------------------------------------------*
+*& Loop pararell cursor without read
+*--------------------------------------------------------------------*
+" Not user Read
+LW_INDEX = 1.
+GET RUN TIME FIELD LW_START.
+LOOP AT LT_BKPF INTO LS_BKPF.
+  LOOP AT LT_BSEG INTO LS_BSEG FROM LW_INDEX.
+    IF NOT ( LS_BSEG-BUKRS = LS_BKPF-BUKRS
+         AND LS_BSEG-BELNR = LS_BKPF-BELNR
+         AND LS_BSEG-GJAHR = LS_BKPF-GJAHR ).
+*   Code Process Logic Details...
+      LW_INDEX = SY-TABIX.
+      EXIT.
+    ENDIF.
+*   Code Process Logic Details...
+  ENDLOOP.
+ENDLOOP.
+GET RUN TIME FIELD LW_END.
+LW_TIME = LW_END - LW_START.
+WRITE: / 'Loop nested loop parallel cursor without read: ', LW_TIME.
